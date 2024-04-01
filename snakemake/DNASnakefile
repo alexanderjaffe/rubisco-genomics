@@ -1,0 +1,115 @@
+configfile: "config.yaml"
+import gzip
+from Bio.SeqIO.QualityIO import FastqGeneralIterator as fqi
+
+### PARSE THE INPUT TEMPLATES
+samples = {}
+for line in open(config["sample_list"]).readlines():
+    runs = [item for item in line.strip().split("\t")[1].split(",")]
+    samples[line.split("\t")[0]] = runs
+
+rule all:
+   input:
+        expand("instrain/{sample}/output/{sample}_genome_info.tsv", sample=samples),
+        expand("trimmed_reads/counts/{sample}_read_count.txt", sample=samples)
+
+rule download_individual_reads:
+    output:
+        temp("reads/{sample}/{run}_1.fastq.gz"),
+        temp("reads/{sample}/{run}_2.fastq.gz")
+    threads: config["maxthreads"]
+    log: "logs/download/{sample}_{run}.log"
+    run:
+        for run in samples[wildcards.sample]:
+            command = "par-fastq-dump --sra-id %s --threads {threads} --outdir \
+                reads/%s --split-files --gzip 2> {log}" %(run, wildcards.sample)
+            shell(command)
+
+rule combine_reads:
+    input:
+        fwd_in = lambda wildcards: expand("reads/{sample}/{run}_1.fastq.gz", \
+            run=samples[wildcards.sample], sample=wildcards.sample),
+        rev_in = lambda wildcards: expand("reads/{sample}/{run}_2.fastq.gz", \
+            run=samples[wildcards.sample], sample=wildcards.sample)
+    output:
+        fwd_out = temp("reads/merged_{sample}_1.fastq.gz"),
+        rev_out = temp("reads/merged_{sample}_2.fastq.gz")
+    run:
+        shell("cat %s > %s" %(" ".join(input.fwd_in), output.fwd_out))
+        shell("cat %s > %s" %(" ".join(input.rev_in), output.rev_out))
+
+rule trim_reads:
+    input:
+        fwd = "reads/merged_{sample}_1.fastq.gz",
+        rev = "reads/merged_{sample}_2.fastq.gz"
+    output:
+        fwd = temp("trimmed_reads/{sample}_1.fastq.gz"),
+        rev = temp("trimmed_reads/{sample}_2.fastq.gz")
+    threads: config["maxthreads"]
+    log: "logs/trim/{sample}.log"
+    shell:
+        """
+        bbduk.sh in1={input.fwd} in2={input.rev} \
+            out1={output.fwd} out2={output.rev} \
+            threads={threads} ref=adapters ktrim=r \
+            k=23 mink=11 hdist=1 tbo \
+            qtrim=r trimq=25 minlen=20
+        """
+
+rule count_trimmed_reads:
+    input:
+        "trimmed_reads/{sample}_1.fastq.gz"
+    output:
+        "trimmed_reads/counts/{sample}_read_count.txt"
+    run:
+        count=0
+        with gzip.open(input[0], "rt") as handle:
+            for (title, sequence, quality) in fqi(handle):
+                count+=1
+        with open(output[0], "w") as out:
+            out.write("%s\t%s" %(wildcards.sample, count*2))
+
+rule map_reads:
+    input:
+        fwd = "trimmed_reads/{sample}_1.fastq.gz",
+        rev = "trimmed_reads/{sample}_2.fastq.gz"
+    output:
+        bam = temp("mapping/{sample}.bam"),
+        sorted_bam = temp("mapping/{sample}.sorted.bam")
+    log: "logs/mapping/{sample}.log"
+    threads: config["maxthreads"]
+    params:
+        idx = config["idx"]
+    shell:
+        """
+        bowtie2 -x {params.idx} \
+            -1 {input.fwd} -2 {input.rev} \
+            -p {threads} | shrinksam | \
+            samtools view -S -b > {output.bam}
+        samtools sort --threads {threads} \
+            {output.bam} > {output.sorted_bam}
+        samtools index -@ {threads} {output.sorted_bam}
+        """
+
+rule compute_coverage:
+    input:
+        bam = "mapping/{sample}.sorted.bam",
+        fasta = config["fasta"],
+        stbfile = config["stbfile"]
+    output:
+        "instrain/{sample}/output/{sample}_genome_info.tsv"
+    log: "logs/instrain/{sample}.log"
+    threads: config["maxthreads"]
+    params:
+        min_read_ani = 0.95,
+        min_mapq = 10
+    shell:
+        """
+        inStrain profile {input.bam} {input.fasta} \
+            -p {threads} --skip_mm_profiling \
+            --skip_plot_generation \
+            --min_read_ani {params.min_read_ani} \
+            --min_mapq {params.min_mapq} \
+            -o instrain/{wildcards.sample} \
+            -s {input.stbfile}
+        """

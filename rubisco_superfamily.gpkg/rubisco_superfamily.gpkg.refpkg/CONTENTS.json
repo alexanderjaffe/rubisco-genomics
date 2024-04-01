@@ -1,0 +1,29 @@
+{
+    "metadata": {
+        "create_date": "2022-12-27 17:51:42",
+        "format_version": "1.1",
+        "locus": "/tmp/tmp3nhfkmkv/rubisco_superfamily"
+    },
+    "files": {
+        "phylo_model": "phylo_modeln8bkwu1b.json",
+        "aln_fasta": "rubisco_superfamily_deduplicated_aligned.fasta",
+        "seq_info": "rubisco_superfamily_seqinfo.csv",
+        "taxonomy": "rubisco_superfamily_taxonomy.csv",
+        "tree": "rubisco_superfamily.tre",
+        "tree_stats": "rubisco_superfamily.tre.log"
+    },
+    "md5": {
+        "phylo_model": "6d65e4a690a62bff38afd4eacd470a88",
+        "aln_fasta": "e267be3b41b5814165fde6d7e8e53029",
+        "seq_info": "6232b297e7f2caa458ca36e95373807e",
+        "taxonomy": "b4694d64090c56062e498e14ed05140e",
+        "tree": "03dbdb95be38f8260d06307f060c1774",
+        "tree_stats": "b6e39f2f97503e412eee0d41bc2ed70f"
+    },
+    "log": [
+        "Stripped refpkg (removed 0 files)",
+        "Loaded initial files into empty refpkg"
+    ],
+    "rollback": null,
+    "rollforward": null
+}

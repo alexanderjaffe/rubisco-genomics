@@ -1,0 +1,215 @@
+configfile: "config.yaml"
+import gzip, itertools, pysam, time
+pysam.set_verbosity(0)
+import pandas as pd
+import numpy as np
+from Bio.SeqIO.QualityIO import FastqGeneralIterator as fqi
+from Bio.SeqIO.FastaIO import SimpleFastaParser as sfp
+from concurrent.futures import ProcessPoolExecutor
+
+### PARSE THE INPUT TEMPLATES
+samples = {}
+for line in open(config["sample_list"]).readlines():
+    runs = [item for item in line.strip().split("\t")[1].split(",")]
+    samples[line.split("\t")[0]] = runs
+
+rule all:
+   input:
+        expand("output/{sample}_txome_counts.tsv", sample=samples),
+        expand("trimmed_reads/counts/{sample}_read_count.txt", sample=samples)
+        #expand("assembly/{sample}/{sample}.renamed.contigs.fa", sample=samples),
+        #expand("proteins/{sample}/{sample}.renamed.contigs.faa", sample=samples)
+
+rule download_individual_reads:
+    output:
+        temp("reads/{sample}/{run}_1.fastq.gz"),
+        temp("reads/{sample}/{run}_2.fastq.gz")
+    threads: config["maxthreads"]
+    log: "logs/download/{sample}_{run}.log"
+    run:
+        for run in samples[wildcards.sample]:
+            command = "par-fastq-dump --sra-id %s --threads {threads} --outdir \
+                reads/%s --split-files --gzip 2> {log}" %(run, wildcards.sample)
+            shell(command)
+
+rule combine_reads:
+    input:
+        fwd_in = lambda wildcards: expand("reads/{sample}/{run}_1.fastq.gz", \
+            run=samples[wildcards.sample], sample=wildcards.sample),
+        rev_in = lambda wildcards: expand("reads/{sample}/{run}_2.fastq.gz", \
+            run=samples[wildcards.sample], sample=wildcards.sample)
+    output:
+        fwd_out = temp("reads/merged_{sample}_1.fastq.gz"),
+        rev_out = temp("reads/merged_{sample}_2.fastq.gz")
+    run:
+        shell("cat %s > %s" %(" ".join(input.fwd_in), output.fwd_out))
+        shell("cat %s > %s" %(" ".join(input.rev_in), output.rev_out))
+
+rule trim_reads:
+    input:
+        fwd = "reads/merged_{sample}_1.fastq.gz",
+        rev = "reads/merged_{sample}_2.fastq.gz"
+    output:
+        fwd = temp("trimmed_reads/{sample}_1.fastq.gz"),
+        rev = temp("trimmed_reads/{sample}_2.fastq.gz")
+    threads: config["maxthreads"]
+    log: "logs/trim/{sample}.log"
+    shell:
+        """
+        bbduk.sh in1={input.fwd} in2={input.rev} \
+            out1={output.fwd} out2={output.rev} \
+            threads={threads} ref=adapters ktrim=r \
+            k=23 mink=11 hdist=1 tbo \
+            qtrim=r trimq=25 minlen=20
+        """
+
+rule count_trimmed_reads:
+    input:
+        "trimmed_reads/{sample}_1.fastq.gz"
+    output:
+        "trimmed_reads/counts/{sample}_read_count.txt"
+    run:
+        count=0
+        with gzip.open(input[0], "rt") as handle:
+            for (title, sequence, quality) in fqi(handle):
+                count+=1
+        with open(output[0], "w") as out:
+            out.write("%s\t%s" %(wildcards.sample, count*2))
+
+rule map_reads:
+    input:
+        fwd = "trimmed_reads/{sample}_1.fastq.gz",
+        rev = "trimmed_reads/{sample}_2.fastq.gz"
+    output:
+        bam = temp("mapping/{sample}.bam"),
+        sorted_bam = "mapping/{sample}.sorted.bam"
+    log: "logs/mapping/{sample}.log"
+    threads: config["maxthreads"]
+    params:
+        idx = config["idx"]
+    shell:
+        """
+        bowtie2 -x {params.idx} \
+            -1 {input.fwd} -2 {input.rev} \
+            -p {threads} | shrinksam | \
+            samtools view -S -b > {output.bam}
+        samtools sort --threads {threads} \
+            {output.bam} > {output.sorted_bam}
+        samtools index -@ {threads} {output.sorted_bam}
+        """
+
+def process_gene(gene, bamfile, min_mapq, max_mismatch):
+
+    coverages = {} #initialize empty cov vec
+    for i in range(gene[1], gene[2] + 1):
+        coverages[i] = 0
+    gene_reads = []
+
+    # take all columns including outside region w/ overlapping reads
+    for pileupcolumn in pysam.AlignmentFile(bamfile, "rb").pileup(
+        "_".join(gene[0].split("_")[:-1]),
+        gene[1], gene[2], truncate=False,
+        min_mapping_quality=min_mapq, ignore_overlap=False):
+
+        for pileupread in pileupcolumn.pileups:
+
+            if (not pileupread.is_del and not pileupread.is_refskip
+                and float(pileupread.alignment.get_tag("NM")) <= max_mismatch):
+
+                if pileupcolumn.pos in coverages: # only for those in gene region
+                    coverages[pileupcolumn.pos] += 1
+                gene_reads.append(pileupread.alignment.query_name)
+
+    mean_coverage = round(np.mean(list(coverages.values())), 2)
+    breadth = len([x for x in coverages.values() if x > 0]) / (float(gene[2] - gene[1]) + 1)
+
+    return [gene[0], mean_coverage, breadth, len(set(gene_reads))]
+
+rule compute_counts:
+    input:
+        bam = "mapping/{sample}.sorted.bam",
+    output:
+        "output/{sample}_txome_counts.tsv"
+    log: "logs/compute/{sample}.log"
+    params:
+        max_threads = config["maxthreads"],
+        max_mismatch = 5,
+        min_mapq = 20
+    run:
+
+        aln = pysam.AlignmentFile(input.bam, "rb")
+        genome_table = pd.read_csv(config["genome_table"], sep="\t")
+        all_results = []
+        count=0
+
+        for key, row in genome_table.iterrows():
+
+            gpath = "/scratch/users/ajaffe/deepeco/genomes/first_pass/%s.fa" %(row["genome"])
+            total_reads = 0
+            for record in sfp(open(gpath)):
+                ctg = len([read for read in aln.fetch(record[0].split(" ")[0])])
+                total_reads += ctg
+
+            gepath = "/scratch/users/ajaffe/deepeco/genomes/prodigal/%s.genes.fna" %(row["genome"])
+            total_gene = 0
+            genes = []
+            for record in sfp(open(gepath)):
+                total_gene += len(record[1])
+                genes.append([record[0].split(" # ")[0],
+                              int(record[0].split(" # ")[1]),
+                              int(record[0].split(" # ")[2])])
+
+            if total_reads >= 500:
+
+                start = time.time()
+                with ProcessPoolExecutor(params.max_threads) as executor:
+                    gresults = list(executor.map(process_gene, genes,
+                                                itertools.repeat(input.bam),
+                                                itertools.repeat(params.min_mapq),
+                                                itertools.repeat(params.max_mismatch)))
+                gdf = pd.DataFrame(gresults, columns=["gene", "mean_coverage", "breadth", "read_count"])
+                gdf["genome"] = row["genome"]
+                all_results.append(gdf)
+
+                end = time.time()
+                print("%s completed in %.2f minutes." %(row["genome"], (end-start)/60))
+
+            else:
+                print("%s only has %d reads, skipping..." %(row["genome"], total_reads))
+
+            count+=1
+            print("%d of %d genomes completed." %(count, len(genome_table)))
+
+        aln.close()
+        all_df = pd.concat(all_results)
+        all_df["sample"] = wildcards.sample
+        all_df.to_csv(output[0], sep="\t", index=False)
+
+'''rule assemble_reads:
+    input:
+        fwd = temp("trimmed_reads/{sample}_1.fastq.gz"),
+        rev = temp("trimmed_reads/{sample}_2.fastq.gz")
+    output:
+        raw_scafs = temp("assembly/{sample}/{sample}.contigs.fa"),
+        renamed_scafs = "assembly/{sample}/{sample}.renamed.contigs.fa"
+    threads: config["maxthreads"]
+    log: "logs/assemble/{sample}.log"
+    shell:
+        """
+        rm -r assembly/{wildcards.sample}
+        megahit -1 {input.fwd} -2 {input.rev} -o assembly/{wildcards.sample} \
+         --continue --out-prefix {wildcards.sample} -t {threads}
+        rename_assembly.py {output.raw_scafs}
+        """
+
+rule predict_genes:
+    input:
+        "assembly/{sample}/{sample}.renamed.contigs.fa"
+    output:
+        faa = "proteins/{sample}/{sample}.renamed.contigs.faa"
+    params:
+        parts = config["maxthreads"]
+    shell:
+        """
+        parallel_prodigal.py {input[0]} {params.parts} proteins/{wildcards.sample}
+        """'''

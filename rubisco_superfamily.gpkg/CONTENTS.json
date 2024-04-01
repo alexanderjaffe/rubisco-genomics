@@ -1,0 +1,1 @@
+{"graftm_package_version": 3, "align_hmm": "graftm9ngc4u36_align.hmm", "search_hmms": ["graftm6u_9gtim_search.hmm"], "refpkg": "rubisco_superfamily.gpkg.refpkg", "trusted_cutoff": false, "range": 628.8223844282238, "unaligned_sequence_database": "rubisco_superfamily.75.fa", "diamond_database": "rubisco_superfamily.dmnd"}
