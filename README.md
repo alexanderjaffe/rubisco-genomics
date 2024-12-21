@@ -4,7 +4,7 @@ Code supporting "Abundant bacterial lineages drive the potential for rubisco-med
 
 ## code
 
-*`notebooks/` - Code describing the main analyses and figure generation are available here in Jupyter Notebook format.
+*`notebooks/` - Code describing the main analyses and figure generation are available here in notebook format.
    * `deepeco-build-genome-set.ipynb` - Build genome set for the analysis by screening for rubisco superfamily. Assign quality information and taxonomy, curate rubisco-encoding scaffolds.
    * `deepeco-refine-rubisco.ipynb` - Classify and curate rubisco sequences within form groups.
    * `deepeco-metabolism-analyze.ipynb` - Perform functional annotation of genomes, curate annotations for a susbet of metabolic genes.
