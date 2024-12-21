@@ -22,24 +22,24 @@ Code supporting "Abundant and metabolically flexible bacterial lineages underlie
 
 ## required software
 
- *[graftM](https://github.com/geronimp/graftM)
- *[kofam_scan](https://github.com/takaram/kofam_scan)
-*[GTDBTk](https://github.com/Ecogenomics/GTDBTk)
-*[CheckM](https://github.com/Ecogenomics/CheckM)
-*[dRep](https://github.com/MrOlm/drep)
-*[DIAMOND](https://github.com/bbuchfink/diamond)
-*[prodigal](https://github.com/hyattpd/Prodigal)
-*[HMMER](https://github.com/EddyRivasLab/hmmer)
-*[USEARCH](https://www.drive5.com/usearch/)
-*[MAFFT](https://github.com/GSLBiotech/mafft)
-*[FastTreeMP](https://morgannprice.github.io/fasttree/)
-*[BLAST](https://blast.ncbi.nlm.nih.gov/doc/blast-help/downloadblastdata.html)
-*[bowtie2](https://github.com/BenLangmead/bowtie2)
-*[samtools](https://github.com/samtools/samtools)
-*[CoverM](https://github.com/wwood/CoverM)
-*[Snakemake](https://github.com/snakemake/snakemake)
-*[parallel-fastq-dump](https://github.com/rvalieris/parallel-fastq-dump)
-*[BBTools/BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/)
+[graftM](https://github.com/geronimp/graftM),
+[kofam_scan](https://github.com/takaram/kofam_scan),
+[GTDBTk](https://github.com/Ecogenomics/GTDBTk),
+[CheckM](https://github.com/Ecogenomics/CheckM),
+[dRep](https://github.com/MrOlm/drep),
+[DIAMOND](https://github.com/bbuchfink/diamond),
+[prodigal](https://github.com/hyattpd/Prodigal),
+[HMMER](https://github.com/EddyRivasLab/hmmer),
+[USEARCH](https://www.drive5.com/usearch/),
+[MAFFT](https://github.com/GSLBiotech/mafft),
+[FastTreeMP](https://morgannprice.github.io/fasttree/),
+[BLAST](https://blast.ncbi.nlm.nih.gov/doc/blast-help/downloadblastdata.html),
+[bowtie2](https://github.com/BenLangmead/bowtie2),
+[samtools](https://github.com/samtools/samtools),
+[CoverM](https://github.com/wwood/CoverM),
+*[Snakemake](https://github.com/snakemake/snakemake),
+*[parallel-fastq-dump](https://github.com/rvalieris/parallel-fastq-dump),
+*[BBTools/BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/),
 *[inStrain](https://github.com/MrOlm/inStrain)
 
 Other files or information available upon request to [ajaffe@stanford.edu](mailto:ajaffe@stanford.edu). 

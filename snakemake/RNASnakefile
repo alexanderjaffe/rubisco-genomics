@@ -17,8 +17,6 @@ rule all:
    input:
         expand("output/{sample}_txome_counts.tsv", sample=samples),
         expand("trimmed_reads/counts/{sample}_read_count.txt", sample=samples)
-        #expand("assembly/{sample}/{sample}.renamed.contigs.fa", sample=samples),
-        #expand("proteins/{sample}/{sample}.renamed.contigs.faa", sample=samples)
 
 rule download_individual_reads:
     output:
@@ -103,7 +101,8 @@ def process_gene(gene, bamfile, min_mapq, max_mismatch):
     coverages = {} #initialize empty cov vec
     for i in range(gene[1], gene[2] + 1):
         coverages[i] = 0
-    gene_reads = []
+    gene_reads = set()
+    gene_reads_or = set()
 
     # take all columns including outside region w/ overlapping reads
     for pileupcolumn in pysam.AlignmentFile(bamfile, "rb").pileup(
@@ -118,12 +117,14 @@ def process_gene(gene, bamfile, min_mapq, max_mismatch):
 
                 if pileupcolumn.pos in coverages: # only for those in gene region
                     coverages[pileupcolumn.pos] += 1
-                gene_reads.append(pileupread.alignment.query_name)
+                gene_reads.add(pileupread.alignment.query_name)
+                orient = "1" if pileupread.alignment.is_read1 == True else "2"
+                gene_reads_or.add(pileupread.alignment.query_name + "_" + orient)
 
     mean_coverage = round(np.mean(list(coverages.values())), 2)
     breadth = len([x for x in coverages.values() if x > 0]) / (float(gene[2] - gene[1]) + 1)
 
-    return [gene[0], mean_coverage, breadth, len(set(gene_reads))]
+    return [gene[0], mean_coverage, breadth, len(gene_reads)*2, len(gene_reads_or)]
 
 rule compute_counts:
     input:
@@ -167,7 +168,7 @@ rule compute_counts:
                                                 itertools.repeat(input.bam),
                                                 itertools.repeat(params.min_mapq),
                                                 itertools.repeat(params.max_mismatch)))
-                gdf = pd.DataFrame(gresults, columns=["gene", "mean_coverage", "breadth", "read_count"])
+                gdf = pd.DataFrame(gresults, columns=["gene", "mean_coverage", "breadth", "read_count", "read_count_or"])
                 gdf["genome"] = row["genome"]
                 all_results.append(gdf)
 
@@ -184,32 +185,3 @@ rule compute_counts:
         all_df = pd.concat(all_results)
         all_df["sample"] = wildcards.sample
         all_df.to_csv(output[0], sep="\t", index=False)
-
-'''rule assemble_reads:
-    input:
-        fwd = temp("trimmed_reads/{sample}_1.fastq.gz"),
-        rev = temp("trimmed_reads/{sample}_2.fastq.gz")
-    output:
-        raw_scafs = temp("assembly/{sample}/{sample}.contigs.fa"),
-        renamed_scafs = "assembly/{sample}/{sample}.renamed.contigs.fa"
-    threads: config["maxthreads"]
-    log: "logs/assemble/{sample}.log"
-    shell:
-        """
-        rm -r assembly/{wildcards.sample}
-        megahit -1 {input.fwd} -2 {input.rev} -o assembly/{wildcards.sample} \
-         --continue --out-prefix {wildcards.sample} -t {threads}
-        rename_assembly.py {output.raw_scafs}
-        """
-
-rule predict_genes:
-    input:
-        "assembly/{sample}/{sample}.renamed.contigs.fa"
-    output:
-        faa = "proteins/{sample}/{sample}.renamed.contigs.faa"
-    params:
-        parts = config["maxthreads"]
-    shell:
-        """
-        parallel_prodigal.py {input[0]} {params.parts} proteins/{wildcards.sample}
-        """'''
