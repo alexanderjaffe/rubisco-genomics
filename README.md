@@ -5,7 +5,6 @@ Code supporting "Abundant and metabolically flexible bacterial lineages underlie
 ## code
 
 *`snakemake/` - Snakemake workflows for global metagenomic and metatranscriptomic analysis.
-*`rubisco_superfamily.gpkg/` - Original graftM gpkg for extraction of rubisco superfamily sequences
 *`notebooks/` - Code describing the main analyses and figure generation are available here in notebook format.
    * `deepeco-build-genome-set.ipynb` - Build genome set for the analysis by screening for rubisco superfamily. Assign quality information and taxonomy, curate rubisco-encoding scaffolds.
    * `deepeco-refine-rubisco.ipynb` - Classify and curate rubisco sequences within form groups.
@@ -17,7 +16,7 @@ Code supporting "Abundant and metabolically flexible bacterial lineages underlie
 
 ## files
 
-*`rubisco_superfamily.gpkg/` - Original graftM gpkg for rubisco classification.
+*`rubisco_superfamily.gpkg/` - Original graftM gpkg for rubisco classification.<br>
 *`hmms/` - Form-specific HMM profiles used for secondary rubisco classification.
 
 ## required software
