@@ -4,7 +4,7 @@ Code supporting "Abundant and metabolically flexible bacterial lineages underlie
 
 ## code
 
-*`snakemake/` - Snakemake workflows for global metagenomic and metatranscriptomic analysis.
+*`snakemake/` - Snakemake workflows for global metagenomic and metatranscriptomic analysis.<br>
 *`notebooks/` - Code describing the main analyses and figure generation are available here in notebook format.
    * `deepeco-build-genome-set.ipynb` - Build genome set for the analysis by screening for rubisco superfamily. Assign quality information and taxonomy, curate rubisco-encoding scaffolds.
    * `deepeco-refine-rubisco.ipynb` - Classify and curate rubisco sequences within form groups.
@@ -36,9 +36,9 @@ Code supporting "Abundant and metabolically flexible bacterial lineages underlie
 [bowtie2](https://github.com/BenLangmead/bowtie2),
 [samtools](https://github.com/samtools/samtools),
 [CoverM](https://github.com/wwood/CoverM),
-*[Snakemake](https://github.com/snakemake/snakemake),
-*[parallel-fastq-dump](https://github.com/rvalieris/parallel-fastq-dump),
-*[BBTools/BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/),
-*[inStrain](https://github.com/MrOlm/inStrain)
+[Snakemake](https://github.com/snakemake/snakemake),
+[parallel-fastq-dump](https://github.com/rvalieris/parallel-fastq-dump),
+[BBTools/BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/),
+[inStrain](https://github.com/MrOlm/inStrain)
 
 Other files or information available upon request to [ajaffe@stanford.edu](mailto:ajaffe@stanford.edu). 
