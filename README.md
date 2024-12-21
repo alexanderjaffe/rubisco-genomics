@@ -22,8 +22,8 @@ Code supporting "Abundant and metabolically flexible bacterial lineages underlie
 
 ## required software
 
-*[graftM](https://github.com/geronimp/graftM)
-*[kofam_scan](https://github.com/takaram/kofam_scan)
+ *[graftM](https://github.com/geronimp/graftM)
+ *[kofam_scan](https://github.com/takaram/kofam_scan)
 *[GTDBTk](https://github.com/Ecogenomics/GTDBTk)
 *[CheckM](https://github.com/Ecogenomics/CheckM)
 *[dRep](https://github.com/MrOlm/drep)
