@@ -17,7 +17,8 @@ Code supporting "Abundant and metabolically flexible bacterial lineages underlie
 ## files
 
 *`rubisco_superfamily.gpkg/` - Original graftM gpkg for rubisco classification.<br>
-*`hmms/` - Form-specific HMM profiles used for secondary rubisco classification.
+*`hmms/` - Form-specific HMM profiles used for secondary rubisco classification.<br>
+*`genomes/` - newly-resolved REO MAGs from the OC1703A transect.
 
 ## required software
 
